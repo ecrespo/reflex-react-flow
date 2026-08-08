@@ -105,13 +105,17 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D103", "D100", "D104"]
-"flow_demo/*" = ["D100", "D103", "D104"]
+# Reflex state classes declare mutable defaults by design — the framework
+# deep-copies them per session, so RUF012's ClassVar advice does not apply.
+"flow_demo/*" = ["D100", "D103", "D104", "RUF012"]
+"**/state.py" = ["RUF012"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["flow_demo"]
 markers = [
     "phase1: Phase 1 (Layer 1 wrapper) integration tests",
     "phase2: Phase 2 (Layer 2 registry) integration tests",
