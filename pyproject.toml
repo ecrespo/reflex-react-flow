@@ -82,7 +82,9 @@ default-groups = ["dev"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = [".web", "flow_demo/.web"]
+# `specs/` is normative and changes only via the SDD process (Constitution Art. 9) —
+# the formatter must not rewrite the code samples inside those documents.
+extend-exclude = [".web", "flow_demo/.web", "specs"]
 
 [tool.ruff.lint]
 select = [

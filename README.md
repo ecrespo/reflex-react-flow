@@ -34,10 +34,18 @@ import reflex_react_flow as rxf
 
 class State(rx.State):
     nodes: list[dict] = [
-        {"id": "1", "type": "io_node", "position": {"x": 0, "y": 0},
-         "data": {"label": "Start", "kind": "input"}},
-        {"id": "2", "type": "card_node", "position": {"x": 250, "y": 0},
-         "data": {"title": "Process", "subtitle": "does the work"}},
+        {
+            "id": "1",
+            "type": "io_node",
+            "position": {"x": 0, "y": 0},
+            "data": {"label": "Start", "kind": "input"},
+        },
+        {
+            "id": "2",
+            "type": "card_node",
+            "position": {"x": 250, "y": 0},
+            "data": {"title": "Process", "subtitle": "does the work"},
+        },
     ]
     edges: list[dict] = [{"id": "e1-2", "source": "1", "target": "2"}]
 

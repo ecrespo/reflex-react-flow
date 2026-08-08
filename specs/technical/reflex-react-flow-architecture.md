@@ -322,9 +322,43 @@ JS surface is intentionally too small to justify a JS test toolchain.
 
 ## 11. Open Questions
 
-- [ ] Exact minimum Reflex version — fixed at Phase 0 scaffolding (Owner: EC)
-- [ ] `ReflexReactFlowWarning` vs stdlib `UserWarning` — decide in T-005 (Owner: EC)
-- [ ] Whether `panel` children need a slot wrapper in Reflex — verify in Phase 1 spike (Owner: EC)
+- [x] **Exact minimum Reflex version** → `reflex>=0.9.8` (latest stable at Phase 0; fixed in `pyproject.toml`, T-001).
+- [x] **`ReflexReactFlowWarning` vs stdlib `UserWarning`** → define
+  `ReflexReactFlowWarning(UserWarning)` in `custom_components/reflex_react_flow/warnings.py`.
+  Subclassing `UserWarning` keeps our warnings **visible by default** (unlike
+  `DeprecationWarning`, which is hidden outside `__main__`), while the dedicated category
+  lets users silence *only* this package —
+  `warnings.filterwarnings("ignore", category=ReflexReactFlowWarning)` — without going
+  deaf to every `UserWarning` in their app. Used by REQ-032 (unknown id), REQ-034
+  (cycle-break), REQ-037 (duplicate connection) and INV-03.
+- [x] **Whether `panel` children need a slot wrapper** → **no wrapper needed.** Verified in
+  the T-005 spike: `Panel.create(rx.text("hi"), position="top-left")` passes children
+  through natively and renders as a child of the canvas.
+
+## 12. T-005 spike findings (verified against Reflex 0.9.8)
+
+All five load-bearing assumptions were exercised against the real framework, not inferred
+from docs. Findings that change how Layer 1 is written:
+
+| # | Assumption | Verdict | Evidence / consequence |
+|---|---|---|---|
+| 1 | `rx.NoSSRComponent` can wrap the canvas (DD-001) | **Holds** | Emits `ClientSide(...)` from `$/utils/context`; no SSR path taken |
+| 2 | v12 **named** imports, not default (REQ-001) | **Holds** | Generated: `const ReactFlow = ClientSide(() => import('@xyflow/react').then((mod) => mod.ReactFlow))` — resolves `mod.ReactFlow`, never `mod.default` |
+| 3 | CSS injectable without user action (REQ-001) | **Holds** | `add_custom_code()` returning `import "@xyflow/react/dist/style.css";` lands in the compiled custom code |
+| 4 | Event specs can filter payload **in JS** (DD-002) | **Holds — critical** | A spec returning `Var("rrfFilterNodeChanges(changes, 32)")` compiles to `onNodesChange: ((_changes) => addEvents([ReflexEvent(..., {changes: rrfFilterNodeChanges(_changes, 32)})], ...))`. The filter runs **before** the payload is serialized into the event, which is precisely the Art. 6 contract |
+| 5 | `rx.asset(path, shared=True)` (DD-004) | **Holds** | Returns `/external/<module>/<file>?v=<hash>`; content-hashed, so registry/JS assets are cache-busted per build |
+
+**Finding S-01 (affects T-006).** Reflex already performs snake_case→camelCase
+translation on props automatically (`fit_view`→`fitView`, `snap_grid`→`snapGrid`,
+`min_zoom`→`minZoom`). Art. 4 is therefore satisfied by the framework for the regular
+case, and the wrapper must **not** hand-roll a second translation layer (that would be
+the DRY violation §5.2.1 warns about). The REQ-003 prop-table test remains mandatory:
+it now guards against a Reflex-side regression and pins the handful of props whose React
+name is *not* the naive camelisation. Only those exceptions get an explicit override.
+
+**Finding S-02 (affects T-006).** The npm dependency is declared inline in the `library`
+string as `"@xyflow/react@^12.3.5"`; the caret range resolves to `>=12.3.5 <13`, which
+satisfies the `>=12,<13` pin required by §9 without a separate `lib_dependencies` entry.
 
 ---
 
@@ -342,3 +376,4 @@ JS surface is intentionally too small to justify a JS test toolchain.
 | 1.0 | 2026-08-08 | Ernesto Crespo | Initial version |
 | 1.1 | 2026-08-08 | Ernesto Crespo | DD-008: uv as package/project manager; uv.lock in structure; supply-chain note |
 | 1.2 | 2026-08-08 | Ernesto Crespo | A-08 reconnect scoping in §3.3; §5.2.1 SOLID/DRY normative principles; pattern table expanded (Strategy+Registry, Command dispatch, Adapter, Factory, Template Method) |
+| 1.3 | 2026-08-08 | Ernesto Crespo | T-005 spike: all §11 open questions resolved (Reflex >=0.9.8, `ReflexReactFlowWarning(UserWarning)`, no panel slot wrapper); new §12 records the five verified assumptions plus findings S-01 (Reflex camelises props natively — do not duplicate) and S-02 (npm range via the `library` string) |

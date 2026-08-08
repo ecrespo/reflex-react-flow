@@ -10,6 +10,33 @@ Documented alias::
 
 from __future__ import annotations
 
+from .components import (
+    background,
+    controls,
+    mini_map,
+    node_resizer,
+    node_toolbar,
+    panel,
+    react_flow,
+)
+from .models import Edge, EdgeMarker, HandleConfig, Node, Viewport
+
 __version__ = "0.0.1"
 
-__all__ = ["__version__"]
+__all__ = [
+    # data models (Layer 1)
+    "Edge",
+    "EdgeMarker",
+    "HandleConfig",
+    "Node",
+    "Viewport",
+    "__version__",
+    # component constructors (Layer 1)
+    "background",
+    "controls",
+    "mini_map",
+    "node_resizer",
+    "node_toolbar",
+    "panel",
+    "react_flow",
+]
