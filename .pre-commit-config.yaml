@@ -1,0 +1,51 @@
+# Quality gate — Constitution Art. 8.
+# Run locally with: uv run pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+
+  # Lint + format (Ruff)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.2
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # Secret scanning — no secret shall exist in code or history (Art. 8)
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  # Lockfile stays in sync with pyproject (DD-008)
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.12.3
+    hooks:
+      - id: uv-lock
+
+  - repo: local
+    hooks:
+      # Vulnerable-dependency audit against the pinned resolution (Art. 8, DD-008)
+      - id: pip-audit
+        name: pip-audit (vulnerable dependencies)
+        entry: uv run pip-audit --skip-editable
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock)$
+
+      # Constitution Art. 2 + Art. 3 enforced as tests, not as reviewer diligence.
+      - id: governance-tests
+        name: governance tests (Constitution Art. 2/3)
+        entry: uv run pytest tests/unit/test_packaging.py -q
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|README\.md|LICENSE|custom_components/.*|tests/.*)$
