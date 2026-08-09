@@ -89,6 +89,21 @@ def test_every_spec_event_is_supported() -> None:
         assert event_prop in declared, f"{event_prop} is not a declared event trigger"
 
 
+def test_selection_change_sends_id_lists_only() -> None:
+    """REQ-010: selection reports `{node_ids, edge_ids}` — never the elements."""
+    rendered = rendered_prop(
+        react_flow(on_selection_change=Harness.on_mapping), "onSelectionChange"
+    )
+    assert "rrfFilterSelection" in rendered
+
+
+def test_connect_start_and_end_payloads_are_minimal() -> None:
+    """REQ-014: connect start carries handle identity; end carries success only."""
+    component = react_flow(on_connect_start=Harness.on_mapping, on_connect_end=Harness.on_mapping)
+    assert "rrfFilterConnectStart" in rendered_prop(component, "onConnectStart")
+    assert "rrfFilterConnectEnd" in rendered_prop(component, "onConnectEnd")
+
+
 def test_unbound_events_are_not_rendered() -> None:
     """An event the user did not wire must not appear on the React component."""
     rendered = " ".join(str(prop) for prop in react_flow().render()["props"])
