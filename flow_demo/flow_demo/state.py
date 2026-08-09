@@ -132,6 +132,19 @@ class DemoState(rx.State):
 
     # --- event ledger (read by the debug panel and by Playwright) ---
     event_counts: dict[str, int] = {}
+
+    #: Last payload *per event name*. Keyed rather than a single slot because
+    #: React Flow interleaves events — a `dimensions` change lands right after a
+    #: click and would otherwise overwrite the payload a test is asserting on.
+    payloads: dict[str, str] = {}
+
+    #: Append-only `event|payload` log, newest last, bounded.
+    #: Keying by event name is still not enough for `on_nodes_change`, which
+    #: carries several change *types*: a `dimensions` batch arrives right behind
+    #: a `position` batch under the same name. A history lets an assertion find
+    #: the batch it cares about instead of racing for the most recent one.
+    payload_log: list[str] = []
+
     last_payload: str = ""
     last_payload_bytes: int = 0
 
@@ -142,6 +155,8 @@ class DemoState(rx.State):
         self.event_counts = counts
 
         serialized = json.dumps(payload, separators=(",", ":"))
+        self.payloads = {**self.payloads, name: serialized[:600]}
+        self.payload_log = [*self.payload_log, f"{name}|{serialized[:600]}"][-40:]
         self.last_payload = f"{name}: {serialized[:400]}"
         self.last_payload_bytes = len(serialized.encode())
 
@@ -149,6 +164,7 @@ class DemoState(rx.State):
     def reset_counts(self) -> None:
         """Clear the ledger so a test can measure one interaction in isolation."""
         self.event_counts = {}
+        self.payloads = {}
         self.last_payload = ""
         self.last_payload_bytes = 0
 
@@ -160,19 +176,34 @@ class DemoState(rx.State):
 
         A deliberately small subset of `apply_node_changes`: the full, tested
         implementation lands in Phase 3 (T-017) and the demo will switch to it.
+
+        **Only writes back when a change actually applied.** Reassigning `nodes`
+        unconditionally creates an infinite feedback loop: a new list is a new
+        prop, React Flow re-measures the canvas, emits a `dimensions` change, and
+        the handler fires again — observed at ~60 events/second, which would
+        saturate exactly the channel Art. 6 protects. `apply_node_changes`
+        (T-017) must preserve this no-op-when-nothing-changed property.
         """
         self._record("on_nodes_change", changes)
 
         by_id = {node["id"]: dict(node) for node in self.nodes}
+        mutated = False
         for change in changes:
             node = by_id.get(change.get("id", ""))
             if node is None:
                 continue
             if change["type"] == "position" and "position" in change:
-                node["position"] = change["position"]
+                if node.get("position") != change["position"]:
+                    node["position"] = change["position"]
+                    mutated = True
             elif change["type"] == "select":
-                node["selected"] = change.get("selected", False)
-        self.nodes = list(by_id.values())
+                selected = change.get("selected", False)
+                if node.get("selected") != selected:
+                    node["selected"] = selected
+                    mutated = True
+
+        if mutated:
+            self.nodes = list(by_id.values())
 
     @rx.event
     def on_edges_change(self, changes: list[dict]) -> None:

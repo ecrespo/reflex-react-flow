@@ -5,10 +5,11 @@ integration suite (Tech Design §8).
 """
 
 import reflex as rx
+from reflex.plugins.sitemap import SitemapPlugin
 
 config = rx.Config(
     app_name="flow_demo",
-    disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
+    disable_plugins=[SitemapPlugin],
     frontend_port=3210,
     backend_port=8210,
 )

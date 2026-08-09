@@ -74,6 +74,7 @@ dev = [
     "ruff>=0.8",
     "pre-commit>=4.0",
     "pip-audit>=2.7",
+    "pytest-playwright>=0.8.0",
 ]
 
 [tool.uv]

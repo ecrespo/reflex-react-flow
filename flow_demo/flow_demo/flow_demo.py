@@ -18,7 +18,11 @@ from .state import (
     DemoState,
 )
 
-CANVAS_STYLE = {"width": "100%", "height": "560px", "border": "1px solid #d0d7de"}
+# React Flow's own stylesheet declares `.react-flow { height: 100% }` and is injected
+# after component styles, so a height set on the canvas itself loses to it and the
+# canvas collapses. Its documented contract is that the *parent* carries the
+# dimensions — hence the sized wrapper below.
+CANVAS_BOX_STYLE = {"width": "100%", "height": "560px", "border": "1px solid #d0d7de"}
 
 PAGES = [
     ("/", "Quickstart"),
@@ -94,16 +98,19 @@ def canvas(nodes, edges, **overrides) -> rx.Component:
         "on_edges_delete": DemoState.on_edges_delete,
         "on_viewport_change": DemoState.on_viewport_change,
         "custom_attrs": {"data-testid": "canvas"},
-        "style": CANVAS_STYLE,
     }
     props.update(overrides)
 
-    return rxf.react_flow(
-        rxf.background(variant="dots", gap=18),
-        rxf.controls(),
-        rxf.mini_map(pannable=True, zoomable=True),
-        rxf.panel(color_mode_toggle(), position="top-right"),
-        **props,
+    return rx.box(
+        rxf.react_flow(
+            rxf.background(variant="dots", gap=18),
+            rxf.controls(),
+            rxf.mini_map(pannable=True, zoomable=True),
+            rxf.panel(color_mode_toggle(), position="top-right"),
+            **props,
+        ),
+        style=CANVAS_BOX_STYLE,
+        custom_attrs={"data-testid": "canvas-box"},
     )
 
 
@@ -163,6 +170,9 @@ def debug_panel() -> rx.Component:
             ),
             spacing="2",
         ),
+        # Canvas above the readings: the ledger grows and shrinks as events
+        # arrive, and anything below it would shift under the pointer mid-test.
+        canvas(DemoState.nodes, DemoState.edges),
         rx.box(
             rx.text("Counts", weight="bold", size="2"),
             rx.text(
@@ -179,6 +189,22 @@ def debug_panel() -> rx.Component:
                 font_family="monospace",
                 white_space="pre-wrap",
             ),
+            rx.text("Payload log", weight="bold", size="2", margin_top="0.5rem"),
+            rx.text(
+                DemoState.payload_log.join("\n"),
+                custom_attrs={"data-testid": "payload-log"},
+                size="1",
+                font_family="monospace",
+                white_space="pre-wrap",
+            ),
+            rx.text("Payloads by event", weight="bold", size="2", margin_top="0.5rem"),
+            rx.text(
+                DemoState.payloads.to_string(),
+                custom_attrs={"data-testid": "payloads"},
+                size="1",
+                font_family="monospace",
+                white_space="pre-wrap",
+            ),
             rx.text(
                 "Last payload bytes: ",
                 DemoState.last_payload_bytes.to_string(),
@@ -189,7 +215,6 @@ def debug_panel() -> rx.Component:
             border="1px solid #d0d7de",
             border_radius="6px",
         ),
-        canvas(DemoState.nodes, DemoState.edges),
     )
 
 

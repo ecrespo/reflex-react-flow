@@ -35,56 +35,56 @@
 
 ### Phase 1 — Layer 1: wrapper, events, demo
 
-#### T-004 · Data models
+#### [x] 2026-08-08 · T-004 · Data models
 - **What:** `models.py`: `Node`, `Edge`, `Viewport`, `HandleConfig`, `EdgeMarker` dataclasses per Data Model §2; construction validation; `to_dict`/`from_dict` round-trip; INV-05/06.
 - **REQ:** REQ-016, REQ-017 (model side), REQ-021 (HandleConfig shape)
 - **Files:** `models.py`, `tests/unit/test_models.py`
 - **Depends on:** T-001
 - **Done:** `pytest tests/unit/test_models.py` green; tests cite REQ-016/017/021 in docstrings.
 
-#### T-005 · Reflex wrapping spike
+#### [x] 2026-08-08 · T-005 · Reflex wrapping spike
 - **What:** 1-day spike: verify NoSSR wrap of `@xyflow/react` v12 (named imports), CSS injection, `rx.asset(shared=True)` import path, `panel` children slot. Record findings in Tech Design (amend or Delta if wrong). Decide warning category (open question).
 - **REQ:** REQ-001 (feasibility)
 - **Depends on:** T-001
 - **Done:** Spike branch renders an empty styled canvas in a scratch app; Tech Design open questions §11 all resolved (checkboxes).
 
-#### T-006 · Canvas wrapper
+#### [x] 2026-08-08 · T-006 · Canvas wrapper
 - **What:** `components/react_flow.py`: `ReactFlowLib(rx.NoSSRComponent)` + `react_flow()` constructor with the full prop table (API Spec §3.1), snake→camel translation, CSS via custom code.
 - **REQ:** REQ-001, REQ-002, REQ-003
 - **Depends on:** T-004, T-005
 - **Done:** render-harness unit test asserts every §3.1 prop maps to its camelCase name; demo scratch page shows nodes/edges.
 
-#### T-007 · Plugin components [P]
+#### [x] 2026-08-08 · T-007 · Plugin components [P]
 - **What:** `components/plugins.py`: `background`, `controls`, `mini_map`, `panel`, `node_toolbar`, `node_resizer` per API Spec §3.2.
 - **REQ:** REQ-004
 - **Depends on:** T-006
 - **Done:** unit render tests per component; demo page renders all six.
 
-#### T-008 · Event utils asset
+#### [x] 2026-08-08 · T-008 · Event utils asset
 - **What:** `assets/event_utils.js`: payload filter helpers, 32 KB cap with truncate+console-warn, trailing-edge debounce factory.
 - **REQ:** REQ-013 (cap), REQ-012 (debounce mechanism)
 - **Depends on:** T-005
 - **Done (local, A-06):** pytest drives the pure helpers in `event_utils.js` through a Node/QuickJS one-shot harness (`tests/unit/test_event_utils.py`): a synthetic 500-change batch asserts the returned list is truncated below the cap and that a warning record was produced; a debounce test asserts N rapid calls collapse to 1 trailing call. Playwright console capture in T-012 remains the end-to-end confirmation, not the primary gate.
 
-#### T-009 · Event specs — changes & connect
+#### [x] 2026-08-08 · T-009 · Event specs — changes & connect
 - **What:** Event specs for `on_nodes_change`, `on_edges_change`, `on_connect`, `on_connect_start`, `on_connect_end` filtering payloads per Data Model §3.1–3.3.
 - **REQ:** REQ-005, REQ-006, REQ-007, REQ-014
 - **Depends on:** T-006, T-008
 - **Done:** unit tests assert spec JS emits only whitelisted fields; integration drag/connect tests (T-012) reference these REQs.
 
-#### T-010 · Event specs — clicks, selection, deletes, drag, viewport [P]
+#### [x] 2026-08-08 · T-010 · Event specs — clicks, selection, deletes, drag, viewport [P]
 - **What:** Specs for `on_node_click`, `on_node_double_click`, `on_edge_click`, `on_pane_click`, `on_selection_change`, `on_nodes_delete`, `on_edges_delete`, `on_node_drag_start/stop`, `on_viewport_change` (debounced, `viewport_debounce_ms`).
 - **REQ:** REQ-008, REQ-009, REQ-010, REQ-011, REQ-012
 - **Depends on:** T-006, T-008
 - **Done:** unit tests per spec assert payload shape.
 
-#### T-011 · Demo app (Phase-1 pages)
+#### [x] 2026-08-08 · T-011 · Demo app (Phase-1 pages)
 - **What:** `flow_demo/`: quickstart page, edge-types page (REQ-017), subflows page (REQ-015), color-mode toggle (REQ-018), debug panel (event counts/sizes).
 - **REQ:** REQ-002, REQ-015, REQ-017, REQ-018
 - **Depends on:** T-006, T-007
 - **Done:** `reflex run` serves all pages; data-testid hooks present for Playwright.
 
-#### T-012 · Integration suite Phase 1
+#### [x] 2026-08-08 · T-012 · Integration suite Phase 1
 - **What:** Playwright suite: render (REQ-002/004), drag deltas only (REQ-005), edge changes (REQ-006), connect payload (REQ-007), clicks (REQ-008), drag start/stop only (REQ-009), selection (REQ-010), delete key (REQ-011), pan ≤6 events/s (REQ-012), truncation warning (REQ-013), subflow clamp (REQ-015), color mode flip (REQ-018).
 - **REQ:** REQ-002, 004–015, 017, 018
 - **Depends on:** T-009, T-010, T-011
@@ -209,6 +209,14 @@ All MUST REQs (001–034 minus SHOULDs) have ≥1 task and ≥1 planned test. SH
 | 2026-08-08 | A-01..A-09 | Done | All nine analyze findings resolved; Art. 2 amended (A-2026-08-08-01); icon set pinned to a bundled Lucide/ISC subset; REQ-037 added. Resolution log in `analyze-report.md` |
 | 2026-08-08 | T-001 | `[x]` | uv project; Reflex minimum fixed at `>=0.9.8`; `uv.lock` generated (2318 lines); `uv run python -c "import reflex_react_flow"` OK |
 | 2026-08-08 | T-002 | `[x]` | MIT + OSI classifier, LICENSE, README attribution/non-affiliation, `[langgraph]` extra, CHANGELOG. Governance suite (8 tests) encodes Art. 2/3 |
+| 2026-08-08 | T-005 | `[x]` | Spike vs Reflex 0.9.8: all 5 assumptions hold; §11 open questions closed; findings S-01 (Reflex camelises natively) and S-02 recorded in new Tech Design §12 |
+| 2026-08-08 | T-004 | `[x]` | `models.py` — 31 tests citing REQ-016/017/021, INV-05/06 |
+| 2026-08-08 | T-006 | `[x]` | `ReactFlowLib` NoSSR + full §3.1 prop table; `PROP_NAME_MAP` asserted as a set (Art. 5) |
+| 2026-08-08 | T-007 | `[x]` | six plugin components sharing one base; 28 tests |
+| 2026-08-08 | T-008 | `[x]` | `event_utils.js` driven from pytest via Node (A-06 local Done); 13 tests |
+| 2026-08-08 | T-009/T-010 | `[x]` | 15 event specs via per-cap class factory; keyed viewport debounce; 27 tests |
+| 2026-08-08 | T-011 | `[x]` | demo app, 4 pages + event ledger; 29 render tests |
+| 2026-08-08 | T-012 | `[x]` | Playwright suite 14/14, stable over 3 consecutive runs. Found and fixed an infinite render loop (~60 ev/s) caused by unconditional state write-back — constraint recorded for T-017 |
 | 2026-08-08 | T-003 | `[x]` | pre-commit (13 hooks: Ruff, Gitleaks, pip-audit, uv-lock, governance tests) green on `--all-files`; GH Actions CI authored (lint/secrets/audit/test 3.11+3.12/gate). CI not yet observed green — no remote push |
 
 ---

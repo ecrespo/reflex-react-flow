@@ -360,6 +360,32 @@ name is *not* the naive camelisation. Only those exceptions get an explicit over
 string as `"@xyflow/react@^12.3.5"`; the caret range resolves to `>=12.3.5 <13`, which
 satisfies the `>=12,<13` pin required by §9 without a separate `lib_dependencies` entry.
 
+### 12.1 Findings from the T-012 browser suite
+
+**Finding S-03 — controlled-state feedback loop (binding constraint on T-017).**
+A handler that reassigns `nodes` on *every* `on_nodes_change` batch — including batches
+where nothing applied, such as a `dimensions` measurement — creates an unbounded loop:
+new list → new prop → React Flow re-measures → new `dimensions` change → handler fires
+again. Measured at **~60 events/second** in the demo, which saturates precisely the
+channel Art. 6 exists to protect, and no amount of payload filtering fixes it because
+each individual payload is small and legal.
+
+`apply_node_changes` / `apply_edge_changes` (T-017) **MUST therefore be no-ops when no
+change applies**, returning the *same* list object rather than an equal copy, and
+`FlowState` must not assign to `nodes`/`edges` when the helper reports no mutation. This
+is a correctness requirement, not an optimisation. It is covered by REQ-031's task and
+must have a regression test: "a batch of dimensions-only changes leaves state identical
+and triggers no re-push".
+
+**Finding S-04 — the canvas needs a sized parent.** React Flow's stylesheet declares
+`.react-flow { height: 100% }` and is injected after component styles, so a height set
+on the canvas itself loses on source order and the canvas collapses (observed: 2 px).
+Its documented contract is that the *parent* carries the dimensions. The demo wraps the
+canvas in a sized box accordingly. **Open item for the API Spec:** a Python user will
+naturally write `react_flow(..., height="600px")` and get a broken canvas, so v1 docs
+must state the sized-parent rule prominently (T-022), and a future Delta may add
+first-class `width`/`height` props that emit the wrapper themselves.
+
 ---
 
 ## Constitution check
