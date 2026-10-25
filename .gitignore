@@ -221,3 +221,6 @@ __marimo__/
 # Agent guidance — local only, not versioned
 CLAUDE.md
 AGENTS.md
+
+# Reflex-generated asset symlinks (absolute, machine-specific paths)
+/assets/external/
