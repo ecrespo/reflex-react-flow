@@ -1,0 +1,8 @@
+# Keeps the SHA-pinned GitHub Actions current (third-party actions are pinned by
+# commit, not tag, because release.yml holds a PyPI OIDC token).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
