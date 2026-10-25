@@ -1,0 +1,172 @@
+name: CI
+
+# Constitution Art. 8: Ruff, Gitleaks, pip-audit and pytest must stay green.
+# Everything runs through uv (Tech Design DD-008) with lockfile caching.
+# Every action pinned here runs on the Node 24 runtime: GitHub removed Node 20
+# from hosted runners on 2026-09-16, so older majors no longer start.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UV_FROZEN: "1"
+  NODE_VERSION: "24"
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync environment
+        run: uv sync --all-extras
+
+      - name: Ruff check
+        run: uv run ruff check --output-format=github .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history — Art. 8 forbids secrets in history too
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  audit:
+    name: Dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync environment
+        run: uv sync --all-extras
+
+      - name: pip-audit
+        run: uv run pip-audit --skip-editable
+
+  test:
+    name: Tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+
+      # The event_utils.js suite runs the browser helpers under Node.
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Pin Python ${{ matrix.python-version }}
+        run: uv python pin ${{ matrix.python-version }}
+
+      - name: Sync environment
+        run: uv sync --all-extras
+
+      - name: Run unit tests
+        run: uv run pytest tests/unit -q --cov=reflex_react_flow --cov-report=term-missing
+
+  # Tech Design §8: the Playwright suite drives the demo app in a real browser.
+  integration:
+    name: Browser suite (Playwright)
+    runs-on: ubuntu-latest
+    env:
+      RRF_DEMO_URL: http://localhost:3210
+      RRF_DEMO_BACKEND_URL: http://localhost:8210
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync environment
+        run: uv sync --all-extras
+
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Start the demo app
+        working-directory: flow_demo
+        run: |
+          nohup uv run --project .. reflex run --env dev > "$RUNNER_TEMP/demo.log" 2>&1 &
+          for _ in $(seq 1 300); do
+            if curl -sf -o /dev/null "$RRF_DEMO_URL" && curl -sf -o /dev/null "$RRF_DEMO_BACKEND_URL/ping"; then
+              echo "demo app ready"; exit 0
+            fi
+            sleep 1
+          done
+          echo "demo app did not start"; cat "$RUNNER_TEMP/demo.log"; exit 1
+
+      # The suite skips when the demo is unreachable; the step above already
+      # guarantees it is up, so a skip here can only mean a real regression.
+      - name: Run browser suite
+        run: uv run pytest tests/integration -q
+
+      - name: Demo log
+        if: failure()
+        run: cat "$RUNNER_TEMP/demo.log"
+
+  # Constitution Art. 7: no merge lands with a red suite. This job is the single
+  # required status check — it fails if any upstream job failed or was skipped.
+  gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    needs: [lint, secrets, audit, test, integration]
+    if: always()
+    steps:
+      - name: Verify all checks passed
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" = "true" ]; then
+            echo "Quality gate failed (Constitution Art. 8)."
+            exit 1
+          fi
+          echo "Quality gate green."
