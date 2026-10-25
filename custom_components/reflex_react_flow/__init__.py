@@ -21,7 +21,7 @@ from .components import (
 )
 from .models import Edge, EdgeMarker, HandleConfig, Node, Viewport
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 __all__ = [
     # data models (Layer 1)

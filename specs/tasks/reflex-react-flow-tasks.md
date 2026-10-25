@@ -218,6 +218,7 @@ All MUST REQs (001–034 minus SHOULDs) have ≥1 task and ≥1 planned test. SH
 | 2026-08-08 | T-011 | `[x]` | demo app, 4 pages + event ledger; 29 render tests |
 | 2026-08-08 | T-012 | `[x]` | Playwright suite 14/14, stable over 3 consecutive runs. Found and fixed an infinite render loop (~60 ev/s) caused by unconditional state write-back — constraint recorded for T-017 |
 | 2026-08-08 | T-003 | `[x]` | pre-commit (13 hooks: Ruff, Gitleaks, pip-audit, uv-lock, governance tests) green on `--all-files`; GH Actions CI authored (lint/secrets/audit/test 3.11+3.12/gate). CI not yet observed green — no remote push |
+| 2026-10-25 | — (maintenance) | Done | Reflex `>=0.10.0` (demo pins 0.10.0, explicit `RadixThemesPlugin`); CI actions on Node 24 majors, py3.13 added, Playwright suite added to the gate; fixed literal-prop re-render loop (Tech Design S-05) with REQ-010 tests; `release.yml` for tag-driven trusted publishing. Released **0.0.2** as a Layer-1 alpha ahead of T-023, which still owns 0.1.0 |
 
 ---
 

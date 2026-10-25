@@ -128,3 +128,15 @@ def test_package_imports_and_exposes_version() -> None:
     import reflex_react_flow
 
     assert reflex_react_flow.__version__
+
+
+def test_version_matches_pyproject() -> None:
+    """Art. 9: the runtime `__version__` and the published version never drift.
+
+    The release workflow publishes whatever `pyproject.toml` declares, so a stale
+    `__version__` would ship a wheel that misreports itself.
+    """
+    import reflex_react_flow
+
+    declared = tomllib.loads(PYPROJECT.read_text())["project"]["version"]
+    assert reflex_react_flow.__version__ == declared

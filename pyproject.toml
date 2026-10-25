@@ -1,6 +1,6 @@
 [project]
 name = "reflex-react-flow"
-version = "0.0.1"
+version = "0.0.2"
 description = "Node-based editors and flow diagrams for Reflex, powered by React Flow (@xyflow/react) v12. Pure Python, no JavaScript."
 readme = "README.md"
 requires-python = ">=3.11"

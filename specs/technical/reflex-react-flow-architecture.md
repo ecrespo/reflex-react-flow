@@ -323,6 +323,7 @@ JS surface is intentionally too small to justify a JS test toolchain.
 ## 11. Open Questions
 
 - [x] **Exact minimum Reflex version** → `reflex>=0.9.8` (latest stable at Phase 0; fixed in `pyproject.toml`, T-001).
+  **Raised to `reflex>=0.10.0` on 2026-10-25** (0.0.2 release); re-verified in §12.2.
 - [x] **`ReflexReactFlowWarning` vs stdlib `UserWarning`** → define
   `ReflexReactFlowWarning(UserWarning)` in `custom_components/reflex_react_flow/warnings.py`.
   Subclassing `UserWarning` keeps our warnings **visible by default** (unlike
@@ -386,6 +387,48 @@ naturally write `react_flow(..., height="600px")` and get a broken canvas, so v1
 must state the sized-parent rule prominently (T-022), and a future Delta may add
 first-class `width`/`height` props that emit the wrapper themselves.
 
+### 12.2 Re-verification against Reflex 0.10.0 (2026-10-25)
+
+The minimum was raised to `reflex>=0.10.0`. The five §12 assumptions still hold — the
+unit suite and the T-012 browser suite pass unchanged against 0.10.0 — with these
+observations:
+
+- **Auto-memoized components.** Reflex 0.10 compiles stateful components into shared
+  memo modules (`.web/app_components/`). Our `add_custom_code()` output and the
+  `_render()` event-chain rewrites (viewport debounce) land there intact; nothing in the
+  wrapper had to change for it.
+- **Radix Themes must be declared.** Implicit Radix Themes enablement is deprecated
+  (removed in 1.0). The demo now lists `rx.plugins.RadixThemesPlugin()` in `rxconfig.py`.
+  The package itself uses no Radix component, so users are unaffected.
+- **Hot reload scope.** `reflex run` reloads the app package only; edits under
+  `custom_components/` need a restart. A stale server makes the browser suite appear to
+  test code it is not running.
+
+**Finding S-05 — literal props re-render loop (wrapper-level, fixed).** S-03 described
+the loop for state write-back; the same loop occurs with *no* state write-back to
+`nodes` at all whenever the canvas receives a **literal** list. Reflex inlines a literal
+`nodes=[...]` as an array expression in the render function, so every render — including
+the one triggered by any handled event — hands React Flow a new array. React Flow treats
+it as new nodes: it re-measures them (`dimensions` changes → `on_nodes_change`) and
+re-fires `onSelectionChange`, the handlers update state, and the page renders again.
+Measured at ~170 `on_nodes_change` and ~700 other frames per second on `/edge-types`,
+with nodes flickering between `visibility: hidden` and visible (the root cause of the
+"intermittently not visible" flakiness noted in the T-012 tests). Two fixes, both in the
+wrapper:
+
+1. `react_flow()` hoists a static `nodes`/`edges` value (a literal with no state
+   dependency) into a page-level `const rrf_canvas_<n>_<prop>` emitted through
+   `add_custom_code()`, and passes the constant's name as the prop. Identity is then
+   stable across renders. Lists that embed a state Var are left inline, since module
+   scope cannot see state.
+2. `onSelectionChange` is wrapped in `rrfDedupeKeyed` (`event_utils.js`), so it reaches
+   the server only when the `{node_ids, edge_ids}` payload differs from the last one
+   sent for that canvas. This is REQ-010's "WHEN the selection changes" taken literally,
+   and it stays a guard for state-backed canvases too.
+
+After the fix a page load costs ~10 WebSocket frames in total, and the browser suite
+passed six consecutive runs.
+
 ---
 
 ## Constitution check
@@ -403,3 +446,4 @@ first-class `width`/`height` props that emit the wrapper themselves.
 | 1.1 | 2026-08-08 | Ernesto Crespo | DD-008: uv as package/project manager; uv.lock in structure; supply-chain note |
 | 1.2 | 2026-08-08 | Ernesto Crespo | A-08 reconnect scoping in §3.3; §5.2.1 SOLID/DRY normative principles; pattern table expanded (Strategy+Registry, Command dispatch, Adapter, Factory, Template Method) |
 | 1.3 | 2026-08-08 | Ernesto Crespo | T-005 spike: all §11 open questions resolved (Reflex >=0.9.8, `ReflexReactFlowWarning(UserWarning)`, no panel slot wrapper); new §12 records the five verified assumptions plus findings S-01 (Reflex camelises props natively — do not duplicate) and S-02 (npm range via the `library` string) |
+| 1.4 | 2026-10-25 | Ernesto Crespo | Reflex minimum raised to 0.10.0; §12.2 re-verification (auto-memo, explicit Radix plugin, hot-reload scope) and finding S-05 (literal-prop re-render loop; static `nodes`/`edges` hoisting and selection dedupe) |
