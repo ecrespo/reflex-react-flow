@@ -36,7 +36,7 @@ First public alpha: Layer 1 (the declarative wrapper) only. The node registry,
   and declares `rx.plugins.RadixThemesPlugin()` explicitly, as Reflex 0.10 deprecates
   implicit Radix Themes enablement.
 - CI actions moved to their Node 24 majors (`actions/checkout@v7`,
-  `actions/setup-node@v7`, `astral-sh/setup-uv@v10`, `gitleaks/gitleaks-action@v3`,
+  `actions/setup-node@v7`, `astral-sh/setup-uv@v10.3.2`, `gitleaks/gitleaks-action@v3`,
   `actions/upload-artifact@v7`, `actions/download-artifact@v8`); Node 20 is gone from
   GitHub-hosted runners. JavaScript tests run on Node 24, and the test matrix adds
   Python 3.13.
