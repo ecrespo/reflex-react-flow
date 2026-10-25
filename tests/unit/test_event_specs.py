@@ -181,6 +181,16 @@ def test_drag_events_are_not_debounced() -> None:
         assert "rrfDebounceKeyed" not in rendered_prop(component, react_name)
 
 
+def test_selection_change_is_deduplicated() -> None:
+    """REQ-010: the selection handler fires only when the selection changed."""
+    component = react_flow(on_selection_change=Harness.on_mapping)
+    rendered = rendered_prop(component, "onSelectionChange")
+
+    assert "rrfDedupeKeyed" in rendered
+    assert "rrfFilterSelection" in rendered
+    assert "rrfDebounceKeyed" not in rendered, "a selection must not be delayed"
+
+
 # --------------------------------------------------------------------------
 # asset wiring (DD-004)
 # --------------------------------------------------------------------------

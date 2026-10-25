@@ -229,10 +229,36 @@ function rrfDebounceKeyed(key, fn, waitMs) {
   );
 }
 
+/**
+ * Last payload signature sent per canvas, for {@link rrfDedupeKeyed}.
+ *
+ * Keyed for the same reason as {@link RRF_TIMERS}: the wrapper closure is
+ * re-created on every Reflex state update, so it cannot hold the memory itself.
+ */
+const RRF_LAST_SENT = new Map();
+
+/**
+ * Call `fn` only when `payload` differs from the last one sent under `key` (REQ-010).
+ *
+ * React Flow fires onSelectionChange whenever the `nodes` prop changes identity,
+ * not only when the selection does. A canvas fed a literal list gets a fresh
+ * array on every re-render, and the state update triggered by the event causes
+ * that re-render — an unbounded feedback loop over the socket (Art. 6). Dropping
+ * repeats of an unchanged selection breaks the loop.
+ */
+function rrfDedupeKeyed(key, payload, fn) {
+  const signature = JSON.stringify(payload);
+  if (RRF_LAST_SENT.get(key) === signature) return;
+  RRF_LAST_SENT.set(key, signature);
+  fn();
+}
+
 export {
+  RRF_LAST_SENT,
   RRF_TIMERS,
   rrfDebounce,
   rrfDebounceKeyed,
+  rrfDedupeKeyed,
   rrfFilterConnectEnd,
   rrfFilterConnectStart,
   rrfFilterConnection,

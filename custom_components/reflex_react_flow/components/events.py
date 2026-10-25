@@ -21,6 +21,7 @@ __all__ = ["EVENT_FILTER_NAMES", "build_event_specs"]
 #: Every helper the specs call, so the import statement is generated from one list.
 EVENT_FILTER_NAMES: tuple[str, ...] = (
     "rrfDebounceKeyed",
+    "rrfDedupeKeyed",
     "rrfFilterConnectEnd",
     "rrfFilterConnectStart",
     "rrfFilterConnection",

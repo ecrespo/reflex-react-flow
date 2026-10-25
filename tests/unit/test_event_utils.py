@@ -281,6 +281,42 @@ def test_keyed_debounce_isolates_separate_canvases() -> None:
     assert sorted(outcome["result"]["seen"]) == ["a", "b"]
 
 
+def test_unchanged_selection_is_not_resent() -> None:
+    """REQ-010: a repeat of the same selection must not reach the socket.
+
+    React Flow re-fires onSelectionChange whenever the `nodes` prop changes
+    identity; with a literal node list each state update re-renders it, so an
+    undeduplicated selection event feeds itself forever.
+    """
+    outcome = run_js("""
+      const seen = [];
+      const send = (p) => rrfDedupeKeyed("canvas-1:selection", p, () => seen.push(p));
+      for (let i = 0; i < 5; i++) send({node_ids: [], edge_ids: []});
+      send({node_ids: ["n1"], edge_ids: []});
+      send({node_ids: ["n1"], edge_ids: []});
+      send({node_ids: [], edge_ids: []});
+      return {seen};
+    """)
+
+    assert outcome["result"]["seen"] == [
+        {"node_ids": [], "edge_ids": []},
+        {"node_ids": ["n1"], "edge_ids": []},
+        {"node_ids": [], "edge_ids": []},
+    ]
+
+
+def test_selection_dedupe_isolates_separate_canvases() -> None:
+    """REQ-010: one canvas's selection must not suppress another's."""
+    outcome = run_js("""
+      const seen = [];
+      rrfDedupeKeyed("canvas-a:selection", {node_ids: []}, () => seen.push("a"));
+      rrfDedupeKeyed("canvas-b:selection", {node_ids: []}, () => seen.push("b"));
+      return {seen};
+    """)
+
+    assert outcome["result"]["seen"] == ["a", "b"]
+
+
 def test_viewport_payload_is_rounded_and_minimal() -> None:
     """REQ-012 / Data Model §3.4: viewport carries x, y, zoom only."""
     payload = run_js("""

@@ -177,10 +177,64 @@ def test_renders_nodes_and_edges() -> None:
         edges=[{"id": "e1", "source": "1", "target": "2"}],
     )
     props = " ".join(str(prop) for prop in component.render()["props"])
+    code = " ".join(component._get_all_custom_code())
 
     assert "nodes" in props
     assert "edges" in props
-    assert '"1"' in props
+    assert '"1"' in code, "literal content is serialized into the page module"
+    assert "<reflex.Var>" not in code, "module code must be plain JavaScript"
+
+
+def test_literal_nodes_and_edges_are_hoisted_to_constants() -> None:
+    """REQ-002 / Art. 6: a literal list keeps one array identity across renders.
+
+    React Flow re-measures a `nodes` array it has not seen before and re-fires
+    onNodesChange/onSelectionChange; an inline literal is rebuilt on each render,
+    which turns the resulting state update into an endless event loop.
+    """
+    component = react_flow(
+        nodes=[{"id": "1", "position": {"x": 0, "y": 0}, "data": {}}],
+        edges=[{"id": "e1", "source": "1", "target": "2"}],
+    )
+    props = " ".join(str(prop) for prop in component.render()["props"])
+    code = list(component._get_all_custom_code())
+
+    for prop in ("nodes", "edges"):
+        constants = [line for line in code if line.startswith("const rrf_canvas_")]
+        name = next(line.split()[1] for line in constants if line.split()[1].endswith(prop))
+        assert f"{prop}:{name}" in props.replace(" ", "")
+
+
+def test_state_backed_nodes_are_not_hoisted() -> None:
+    """REQ-002: a state Var must stay reactive, so it is passed through as is."""
+    import reflex as rx
+
+    class GraphState(rx.State):
+        nodes: list[dict] = []  # noqa: RUF012 - Reflex deep-copies state defaults
+
+    component = react_flow(nodes=GraphState.nodes)
+    props = " ".join(str(prop) for prop in component.render()["props"])
+
+    assert "rrf_canvas_" not in props
+    assert not any(
+        line.startswith("const rrf_canvas_") for line in component._get_all_custom_code()
+    )
+
+
+def test_literal_embedding_state_is_not_hoisted() -> None:
+    """REQ-002: a list that references state cannot move to module scope."""
+    import reflex as rx
+
+    class LabelState(rx.State):
+        label: str = "start"
+
+    component = react_flow(
+        nodes=[{"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": LabelState.label}}],
+    )
+
+    assert not any(
+        line.startswith("const rrf_canvas_") for line in component._get_all_custom_code()
+    )
 
 
 def test_accepts_plugin_children() -> None:
